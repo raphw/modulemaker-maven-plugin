@@ -25,3 +25,5 @@ Example use:
 ```
 
 Note that all packages of the module must be named explicitly.
+
+Under the Apache 2.0 license.
