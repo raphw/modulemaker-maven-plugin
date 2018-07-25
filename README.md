@@ -16,7 +16,7 @@ Example use:
     </execution>
   </executions>
   <configuration>
-    <name>net.bytebuddy</name>
+    <name>your.module</name>
     <packages>foo.bar</packages>
     <exports>foo.bar,qux.baz</exports>
     <requires>some.mod</requires>
