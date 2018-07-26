@@ -33,7 +33,7 @@ public class ModuleMakerMojo extends AbstractMojo {
     @Parameter
     private String version;
 
-    @Parameter(required = true)
+    @Parameter
     private String packages;
 
     @Parameter
@@ -71,15 +71,14 @@ public class ModuleMakerMojo extends AbstractMojo {
         }
         classWriter.visit(44 + javaVersion, Opcodes.ACC_MODULE, "module-info", null, null, null);
         ModuleVisitor moduleVisitor = classWriter.visitModule(name, 0, version);
-        if (packages.trim().length() == 0) {
-            throw new MojoExecutionException("Must export at least one package");
-        }
-        Set<String> previousPackages = new HashSet<String>();
-        for (String aPackage : packages.split(",")) {
-            if (!previousPackages.add(aPackage.trim())) {
-                throw new MojoExecutionException("Duplicate package: " + aPackage.trim());
+        if (packages != null) {
+            Set<String> previousPackages = new HashSet<String>();
+            for (String aPackage : packages.split(",")) {
+                if (!previousPackages.add(aPackage.trim())) {
+                    throw new MojoExecutionException("Duplicate package: " + aPackage.trim());
+                }
+                moduleVisitor.visitPackage(aPackage.trim());
             }
-            moduleVisitor.visitPackage(aPackage.trim());
         }
         Set<String> previousRequires = new HashSet<String>();
         if (requires != null) {
