@@ -18,48 +18,92 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * A Maven plugin for creating a {@code module-info.class}.
+ */
 @Mojo(name = "make-module", defaultPhase = LifecyclePhase.PROCESS_CLASSES, threadSafe = true)
 public class ModuleMakerMojo extends AbstractMojo {
 
     @Parameter(defaultValue = "${project.build.outputDirectory}", required = true, readonly = true)
     private String outputDirectory;
 
+    /**
+     * The Java version in which the {@code module-info.class} file should be compiled.
+     */
     @Parameter(name = "java-version", defaultValue = "9")
     private int javaVersion;
 
+    /**
+     * The name of the module.
+     */
     @Parameter(required = true)
     private String name;
 
+    /**
+     * The version of the module (optional).
+     */
     @Parameter
     private String version;
 
+    /**
+     * A comma-separated list of packages of the module. This attribute is optional but offers an optimization
+     * that is normally applied by the Java JAR tool. By naming all packages, the runtime does not need to scan
+     * the jar file upon loading it but can use the list of explicitly named packages.
+     */
     @Parameter
     private String packages;
 
+    /**
+     * A comma-separated list of required modules.
+     */
     @Parameter
     private String requires;
 
+    /**
+     * A comma-separated list of statically required modules.
+     */
     @Parameter(name = "static-requires")
     private String staticRequires;
 
+    /**
+     * A comma-separated list of exported packages.
+     */
     @Parameter
     private String exports;
 
+    /**
+     * A comma-separated list of opened packages.
+     */
     @Parameter
     private String opens;
 
+    /**
+     * A list of qualified exports.
+     */
     @Parameter(name = "qualified-exports")
     private List<QualifiedPackage> qualifiedExports;
 
+    /**
+     * A list of qualified opens.
+     */
     @Parameter(name = "qualified-opens")
     private List<QualifiedPackage> qualifiedOpens;
 
+    /**
+     * The main class of this module (optional).
+     */
     @Parameter(name = "main-class")
     private String mainClass;
 
+    /**
+     * A comma-separated list of used services.
+     */
     @Parameter
     private String uses;
 
+    /**
+     * A list of provided services.
+     */
     @Parameter
     private List<Provide> provides;
 
@@ -114,7 +158,7 @@ public class ModuleMakerMojo extends AbstractMojo {
                 String[] modules = qualifiedPackage.modules.split(",");
                 Set<String> previousModules = new HashSet<String>();
                 for (int index = 0; index < modules.length; index++) {
-                    if (!previousModules.add(modules[index])) {
+                    if (!previousModules.add(modules[index].trim())) {
                         throw new MojoExecutionException("Duplicate module: " + modules[index].trim());
                     }
                     modules[index] = modules[index].trim();
@@ -141,7 +185,7 @@ public class ModuleMakerMojo extends AbstractMojo {
                 String[] modules = qualifiedPackage.modules.split(",");
                 Set<String> previousModules = new HashSet<String>();
                 for (int index = 0; index < modules.length; index++) {
-                    if (!previousModules.add(modules[index])) {
+                    if (!previousModules.add(modules[index].trim())) {
                         throw new MojoExecutionException("Duplicate module: " + modules[index].trim());
                     }
                     modules[index] = modules[index].trim();
@@ -167,20 +211,22 @@ public class ModuleMakerMojo extends AbstractMojo {
             }
         }
         if (provides != null) {
-            Set<String> previousProvides = new HashSet<String>();
+            Set<String> previousServices = new HashSet<String>();
             for (Provide provide : provides) {
-                if (!previousProvides.add(provide.service.trim())) {
-                    throw new MojoExecutionException("Duplicate service: " + provide.service.trim());
-                }
                 String[] providers = provide.providers.split(",");
-                Set<String> previousImplementations = new HashSet<String>();
+                Set<String> previousProviders = new HashSet<String>();
                 for (int index = 0; index < providers.length; index++) {
-                    if (!previousImplementations.add(providers[index])) {
+                    if (!previousProviders.add(providers[index].trim())) {
                         throw new MojoExecutionException("Duplicate provider: " + providers[index].trim());
                     }
                     providers[index] = providers[index].trim();
                 }
-                moduleVisitor.visitProvide(provide.service.trim(), providers);
+                for (String service : provide.services.split(",")) {
+                    if (!previousServices.add(service.trim())) {
+                        throw new MojoExecutionException("Duplicate service: " + service.trim());
+                    }
+                    moduleVisitor.visitProvide(service.trim(), providers);
+                }
             }
         }
         moduleVisitor.visitEnd();

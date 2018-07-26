@@ -1,8 +1,17 @@
 package codes.rafael.modulemaker;
 
-import java.util.List;
-
+/**
+ * A description of a qualified export or opening.
+ */
 class QualifiedPackage {
 
-    String packages, modules;
+    /**
+     * A comma-separated list of exported or opened packages.
+     */
+    String packages;
+
+    /**
+     * A comma-separated list of modules to export or open to.
+     */
+    String modules;
 }
