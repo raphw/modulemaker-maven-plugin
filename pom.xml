@@ -67,13 +67,13 @@
 
     <issueManagement>
         <system>github.com</system>
-        <url>https://github.com/raphw/module-maker/issues</url>
+        <url>https://github.com/raphw/modulemaker-maven-plugin/issues</url>
     </issueManagement>
 
     <scm>
-        <connection>scm:git:git@github.com:raphw/module-maker.git</connection>
-        <developerConnection>scm:git:git@github.com:raphw/module-maker.git</developerConnection>
-        <url>git@github.com:raphw/module-maker.git</url>
+        <connection>scm:git:git@github.com:raphw/modulemaker-maven-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:raphw/modulemaker-maven-plugin.git</developerConnection>
+        <url>git@github.com:raphw/modulemaker-maven-plugin.git</url>
         <tag>HEAD</tag>
     </scm>
 
