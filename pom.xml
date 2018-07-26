@@ -10,7 +10,7 @@
     <packaging>maven-plugin</packaging>
 
     <name>Module Maker Maven Plugin</name>
-    <description>A plugin to create a module-info.class</description>
+    <description>A plugin to create a module-info.class without a Java 9 JVM.</description>
     <inceptionYear>2018</inceptionYear>
 
     <properties>
@@ -76,6 +76,13 @@
         <url>git@github.com:raphw/module-maker.git</url>
         <tag>HEAD</tag>
     </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>bintray</id>
+            <url>https://api.bintray.com/maven/raphw/maven/modulemaker-maven-plugin</url>
+        </repository>
+    </distributionManagement>
 
     <build>
         <plugins>
