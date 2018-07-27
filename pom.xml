@@ -10,6 +10,7 @@
     <name>Module Maker Maven Plugin</name>
     <description>A plugin to create a module-info.class without a Java 9 JVM.</description>
     <inceptionYear>2018</inceptionYear>
+    <url>http://rafael.codes</url>
 
     <properties>
         <version.asm>6.2</version.asm>
