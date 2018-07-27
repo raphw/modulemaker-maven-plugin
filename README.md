@@ -17,7 +17,6 @@ Example use:
   </executions>
   <configuration>
     <name>your.module</name>
-    <packages>foo.bar</packages>
     <exports>foo.bar,qux.baz</exports>
     <requires>some.mod</requires>
   </configuration>
@@ -27,3 +26,5 @@ Example use:
 Note that all packages of the module must be named explicitly.
 
 Under the Apache 2.0 license.
+
+Have a look at the [moditech plugin](https://github.com/moditect/moditect) for more complex module creation.
