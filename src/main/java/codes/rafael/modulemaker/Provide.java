@@ -3,7 +3,7 @@ package codes.rafael.modulemaker;
 /**
  * A description of a service provider.
  */
-class Provide {
+public class Provide {
 
     /**
      * A comma-separated list of provided services.
