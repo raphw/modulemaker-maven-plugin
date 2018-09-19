@@ -18,14 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * A Maven plugin for creating a {@code module-info.class}.
- */
-@Mojo(name = "make-module", defaultPhase = LifecyclePhase.PROCESS_CLASSES, threadSafe = true)
-public class ModuleMakerMojo extends AbstractMojo {
-
-    @Parameter(defaultValue = "${project.build.outputDirectory}", required = true, readonly = true)
-    private String outputDirectory;
+public abstract class AbstractModuleMojo extends AbstractMojo {
 
     /**
      * The Java version in which the {@code module-info.class} file should be compiled.
@@ -109,10 +102,16 @@ public class ModuleMakerMojo extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        ClassWriter classWriter = new ClassWriter(0);
         if (javaVersion < 9) {
             throw new MojoExecutionException("Invalid Java version for module-info: " + javaVersion);
         }
+        doExecute();
+    }
+
+    protected abstract void doExecute() throws MojoExecutionException, MojoFailureException;
+
+    protected byte[] makeModuleInfo() throws MojoExecutionException {
+        ClassWriter classWriter = new ClassWriter(0);
         classWriter.visit(44 + javaVersion, Opcodes.ACC_MODULE, "module-info", null, null, null);
         ModuleVisitor moduleVisitor = classWriter.visitModule(name, 0, version);
         if (packages != null) {
@@ -121,24 +120,24 @@ public class ModuleMakerMojo extends AbstractMojo {
                 if (!previousPackages.add(aPackage.trim())) {
                     throw new MojoExecutionException("Duplicate package: " + aPackage.trim());
                 }
-                moduleVisitor.visitPackage(aPackage.trim());
+                moduleVisitor.visitPackage(aPackage.trim().replace('.', '/'));
             }
         }
         Set<String> previousRequires = new HashSet<String>();
         if (requires != null) {
-            for (String aRequire : requires.split(",")) {
-                if (!previousRequires.add(aRequire.trim())) {
-                    throw new MojoExecutionException("Duplicate require: " + aRequire.trim());
+            for (String module : requires.split(",")) {
+                if (!previousRequires.add(module.trim())) {
+                    throw new MojoExecutionException("Duplicate require: " + module.trim());
                 }
-                moduleVisitor.visitRequire(aRequire.trim(), 0, null);
+                moduleVisitor.visitRequire(module.trim(), 0, null);
             }
         }
         if (staticRequires != null) {
-            for (String aRequire : staticRequires.split(",")) {
-                if (!previousRequires.add(aRequire.trim())) {
-                    throw new MojoExecutionException("Duplicate require: " + aRequire.trim());
+            for (String module : staticRequires.split(",")) {
+                if (!previousRequires.add(module.trim())) {
+                    throw new MojoExecutionException("Duplicate require: " + module.trim());
                 }
-                moduleVisitor.visitRequire(aRequire.trim(), Opcodes.ACC_STATIC_PHASE, null);
+                moduleVisitor.visitRequire(module.trim(), Opcodes.ACC_STATIC_PHASE, null);
             }
         }
         if (!previousRequires.contains("java.base")) {
@@ -146,11 +145,11 @@ public class ModuleMakerMojo extends AbstractMojo {
         }
         Set<String> previousExports = new HashSet<String>();
         if (exports != null) {
-            for (String anExport : exports.split(",")) {
-                if (!previousExports.add(anExport.trim())) {
-                    throw new MojoExecutionException("Duplicate export: " + anExport.trim());
+            for (String aPackage : exports.split(",")) {
+                if (!previousExports.add(aPackage.trim())) {
+                    throw new MojoExecutionException("Duplicate export: " + aPackage.trim());
                 }
-                moduleVisitor.visitExport(anExport.trim(), 0, (String[]) null);
+                moduleVisitor.visitExport(aPackage.trim().replace('.', '/'), 0, (String[]) null);
             }
         }
         if (qualifiedExports != null) {
@@ -163,21 +162,21 @@ public class ModuleMakerMojo extends AbstractMojo {
                     }
                     modules[index] = modules[index].trim();
                 }
-                for (String anExport : qualifiedPackage.packages.split(",")) {
-                    if (!previousExports.add(anExport.trim())) {
-                        throw new MojoExecutionException("Duplicate export: " + anExport.trim());
+                for (String aPackage : qualifiedPackage.packages.split(",")) {
+                    if (!previousExports.add(aPackage.trim())) {
+                        throw new MojoExecutionException("Duplicate export: " + aPackage.trim());
                     }
-                    moduleVisitor.visitExport(anExport.trim(), 0, modules);
+                    moduleVisitor.visitExport(aPackage.trim().replace('.', '/'), 0, modules);
                 }
             }
         }
         Set<String> previousOpens = new HashSet<String>();
         if (opens != null) {
-            for (String anOpen : opens.split(",")) {
-                if (!previousOpens.add(anOpen.trim())) {
-                    throw new MojoExecutionException("Duplicate export: " + anOpen.trim());
+            for (String aPackage : opens.split(",")) {
+                if (!previousOpens.add(aPackage.trim())) {
+                    throw new MojoExecutionException("Duplicate export: " + aPackage.trim());
                 }
-                moduleVisitor.visitOpen(anOpen.trim(), 0, (String[]) null);
+                moduleVisitor.visitOpen(aPackage.trim().replace('.', '/'), 0, (String[]) null);
             }
         }
         if (qualifiedOpens != null) {
@@ -190,11 +189,11 @@ public class ModuleMakerMojo extends AbstractMojo {
                     }
                     modules[index] = modules[index].trim();
                 }
-                for (String anOpen : qualifiedPackage.packages.split(",")) {
-                    if (!previousOpens.add(anOpen.trim())) {
-                        throw new MojoExecutionException("Duplicate export: " + anOpen.trim());
+                for (String aPackage : qualifiedPackage.packages.split(",")) {
+                    if (!previousOpens.add(aPackage.trim())) {
+                        throw new MojoExecutionException("Duplicate export: " + aPackage.trim());
                     }
-                    moduleVisitor.visitOpen(anOpen.trim(), 0, modules);
+                    moduleVisitor.visitOpen(aPackage.trim().replace('.', '/'), 0, modules);
                 }
             }
         }
@@ -203,11 +202,11 @@ public class ModuleMakerMojo extends AbstractMojo {
         }
         if (uses != null) {
             Set<String> previousUses = new HashSet<String>();
-            for (String aUse : uses.split(",")) {
-                if (!previousUses.add(aUse.trim())) {
-                    throw new MojoExecutionException("Duplicate use: " + aUse.trim());
+            for (String type : uses.split(",")) {
+                if (!previousUses.add(type.trim())) {
+                    throw new MojoExecutionException("Duplicate use: " + type.trim());
                 }
-                moduleVisitor.visitUse(aUse.trim());
+                moduleVisitor.visitUse(type.trim().replace('.', '/'));
             }
         }
         if (provides != null) {
@@ -219,31 +218,18 @@ public class ModuleMakerMojo extends AbstractMojo {
                     if (!previousProviders.add(providers[index].trim())) {
                         throw new MojoExecutionException("Duplicate provider: " + providers[index].trim());
                     }
-                    providers[index] = providers[index].trim();
+                    providers[index] = providers[index].trim().replace('.', '/');
                 }
-                for (String service : provide.services.split(",")) {
-                    if (!previousServices.add(service.trim())) {
-                        throw new MojoExecutionException("Duplicate service: " + service.trim());
+                for (String type : provide.services.split(",")) {
+                    if (!previousServices.add(type.trim())) {
+                        throw new MojoExecutionException("Duplicate service: " + type.trim());
                     }
-                    moduleVisitor.visitProvide(service.trim(), providers);
+                    moduleVisitor.visitProvide(type.trim().replace('.', '/'), providers);
                 }
             }
         }
         moduleVisitor.visitEnd();
         classWriter.visitEnd();
-        File outputDirectory = new File(this.outputDirectory);
-        if (!outputDirectory.isDirectory() && !outputDirectory.mkdirs()) {
-            throw new MojoExecutionException("Could not create directory: " + outputDirectory);
-        }
-        try {
-            OutputStream out = new FileOutputStream(new File(outputDirectory, "module-info.class"));
-            try {
-                out.write(classWriter.toByteArray());
-            } finally {
-                out.close();
-            }
-        } catch (IOException e) {
-            throw new MojoFailureException("Cannot write to " + outputDirectory, e);
-        }
+        return classWriter.toByteArray();
     }
 }

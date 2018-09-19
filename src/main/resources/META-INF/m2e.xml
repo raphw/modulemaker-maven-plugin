@@ -4,6 +4,7 @@
             <pluginExecutionFilter>
                 <goals>
                     <goal>make-module</goal>
+                    <goal>inject-module</goal>
                 </goals>
             </pluginExecutionFilter>
             <action>
