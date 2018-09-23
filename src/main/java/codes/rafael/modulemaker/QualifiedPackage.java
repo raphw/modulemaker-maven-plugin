@@ -3,7 +3,7 @@ package codes.rafael.modulemaker;
 /**
  * A description of a qualified export or opening.
  */
-class QualifiedPackage {
+public class QualifiedPackage {
 
     /**
      * A comma-separated list of exported or opened packages.
