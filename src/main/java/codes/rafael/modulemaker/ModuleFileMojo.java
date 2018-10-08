@@ -28,7 +28,7 @@ public class ModuleFileMojo extends AbstractModuleMojo {
             throw new MojoExecutionException("Could not read or create directory: " + outputDirectory);
         }
         try {
-            OutputStream out = new FileOutputStream(new File(outputDirectory, "module-info.class"));
+            OutputStream out = new FileOutputStream(new File(outputDirectory, filename()));
             try {
                 out.write(makeModuleInfo());
                 out.write(makeModuleInfo());

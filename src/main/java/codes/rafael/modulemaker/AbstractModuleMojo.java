@@ -39,6 +39,13 @@ public abstract class AbstractModuleMojo extends AbstractMojo {
     private String version;
 
     /**
+     * Determines if the {@code module-info.class} is added as a class file of a multi-release jar file.
+     * To function correctly, using this option requires a manifest declaring {@code Multi-Release: true}.
+     */
+    @Parameter(required = true, defaultValue = "false")
+    private boolean multirelease;
+
+    /**
      * A comma-separated list of packages of the module. This attribute is optional but offers an optimization
      * that is normally applied by the Java JAR tool. By naming all packages, the runtime does not need to scan
      * the jar file upon loading it but can use the list of explicitly named packages.
@@ -109,6 +116,10 @@ public abstract class AbstractModuleMojo extends AbstractMojo {
     }
 
     protected abstract void doExecute() throws MojoExecutionException, MojoFailureException;
+
+    protected String filename() {
+        return (multirelease ? ("META-INF/versions/" + javaVersion + "/") : "") + "module-info.class";
+    }
 
     protected byte[] makeModuleInfo() throws MojoExecutionException {
         ClassWriter classWriter = new ClassWriter(0);

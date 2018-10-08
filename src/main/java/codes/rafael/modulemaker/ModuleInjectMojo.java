@@ -55,6 +55,7 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
 
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
+        String filename = filename();
         File sourceJar;
         if (source == null) {
             sourceJar = new File(directory, finalName + ".jar");
@@ -70,40 +71,40 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
             if (!targetJar.isFile() && !targetJar.createNewFile()) {
                 throw new MojoExecutionException("Target jar could not be created and did not exist from before: " + targetJar);
             }
-            JarInputStream jarInputStream = new JarInputStream(new BufferedInputStream(new FileInputStream(sourceJar)));
+            JarInputStream inputStream = new JarInputStream(new FileInputStream(sourceJar));
             try {
                 if (!targetJar.isFile() && !targetJar.createNewFile()) {
                     throw new MojoFailureException("Could not create target jar: " + targetJar);
                 }
-                Manifest manifest = jarInputStream.getManifest();
-                JarOutputStream jarOutputStream = manifest == null
+                Manifest manifest = inputStream.getManifest();
+                JarOutputStream outputStream = manifest == null
                         ? new JarOutputStream(new FileOutputStream(targetJar))
                         : new JarOutputStream(new FileOutputStream(targetJar), manifest);
                 try {
                     JarEntry jarEntry;
-                    while ((jarEntry = jarInputStream.getNextJarEntry()) != null) {
-                        if (jarEntry.getName().equals("module-info.class")) {
+                    while ((jarEntry = inputStream.getNextJarEntry()) != null) {
+                        if (jarEntry.getName().equals(filename)) {
+                            inputStream.closeEntry();
                             getLog().warn("Ignoring preexisting module-info.class in " + sourceJar);
-                            jarInputStream.closeEntry();
                             continue;
                         }
-                        jarOutputStream.putNextEntry(jarEntry);
+                        outputStream.putNextEntry(jarEntry);
                         byte[] buffer = new byte[1024];
                         int index;
-                        while ((index = jarInputStream.read(buffer)) != -1) {
-                            jarOutputStream.write(buffer, 0, index);
+                        while ((index = inputStream.read(buffer)) != -1) {
+                            outputStream.write(buffer, 0, index);
                         }
-                        jarInputStream.closeEntry();
-                        jarOutputStream.closeEntry();
+                        inputStream.closeEntry();
+                        outputStream.closeEntry();
                     }
-                    jarOutputStream.putNextEntry(new JarEntry("module-info.class"));
-                    jarOutputStream.write(makeModuleInfo());
-                    jarOutputStream.closeEntry();
+                    outputStream.putNextEntry(new JarEntry(filename));
+                    outputStream.write(makeModuleInfo());
+                    outputStream.closeEntry();
                 } finally {
-                    jarOutputStream.close();
+                    outputStream.close();
                 }
             } finally {
-                jarInputStream.close();
+                inputStream.close();
             }
             if (replace) {
                 if (!sourceJar.delete() || !targetJar.renameTo(sourceJar)) {
