@@ -31,7 +31,6 @@ public class ModuleFileMojo extends AbstractModuleMojo {
             OutputStream out = new FileOutputStream(new File(outputDirectory, filename()));
             try {
                 out.write(makeModuleInfo());
-                out.write(makeModuleInfo());
             } finally {
                 out.close();
             }
