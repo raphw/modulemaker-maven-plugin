@@ -24,7 +24,7 @@ public abstract class AbstractModuleMojo extends AbstractMojo {
      * The Java version in which the {@code module-info.class} file should be compiled.
      */
     @Parameter(name = "java-version", defaultValue = "9")
-    private int javaVersion;
+    protected int javaVersion;
 
     /**
      * The name of the module.
@@ -43,7 +43,7 @@ public abstract class AbstractModuleMojo extends AbstractMojo {
      * To function correctly, using this option requires a manifest declaring {@code Multi-Release: true}.
      */
     @Parameter(required = true, defaultValue = "false")
-    private boolean multirelease;
+    protected boolean multirelease;
 
     /**
      * A comma-separated list of packages of the module. This attribute is optional but offers an optimization

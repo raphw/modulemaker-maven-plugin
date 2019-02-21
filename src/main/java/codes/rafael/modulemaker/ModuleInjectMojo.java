@@ -9,7 +9,10 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
@@ -53,6 +56,13 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
     @Parameter(defaultValue = "true")
     private boolean replace;
 
+    /**
+     * Determines if a folder entry should be created for a {@code module-info.class} file that is placed in a multi-release
+     * jar if {@code META-INF/versions/[java]/} does not exist.
+     */
+    @Parameter(defaultValue = "true")
+    private boolean createMultiReleaseFolderEntry;
+
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
         String filename = filename();
@@ -81,12 +91,15 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                         ? new JarOutputStream(new FileOutputStream(targetJar))
                         : new JarOutputStream(new FileOutputStream(targetJar), manifest);
                 try {
+                    boolean hasMultiReleaseFolder = false;
                     JarEntry jarEntry;
                     while ((jarEntry = inputStream.getNextJarEntry()) != null) {
                         if (jarEntry.getName().equals(filename)) {
                             inputStream.closeEntry();
                             getLog().warn("Ignoring preexisting module-info.class in " + sourceJar);
                             continue;
+                        } else if (("META-INF/versions/" + javaVersion + "/").equals(jarEntry.getName())) {
+                            hasMultiReleaseFolder = true;
                         }
                         outputStream.putNextEntry(jarEntry);
                         byte[] buffer = new byte[1024];
@@ -100,6 +113,10 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                     outputStream.putNextEntry(new JarEntry(filename));
                     outputStream.write(makeModuleInfo());
                     outputStream.closeEntry();
+                    if (multirelease && createMultiReleaseFolderEntry && !hasMultiReleaseFolder) {
+                        outputStream.putNextEntry(new JarEntry("META-INF/versions/" + javaVersion + "/"));
+                        outputStream.closeEntry();
+                    }
                 } finally {
                     outputStream.close();
                 }
