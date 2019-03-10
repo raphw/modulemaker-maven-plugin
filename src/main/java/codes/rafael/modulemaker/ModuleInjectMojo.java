@@ -104,7 +104,7 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                             inputStream.closeEntry();
                             getLog().warn("Ignoring preexisting module-info.class in " + sourceJar);
                             continue;
-                        } else if (jarEntry.isDirectory() && missingDirectories.remove(jarEntry.getName())) {
+                        } else if (missingDirectories.remove(jarEntry.getName())) {
                             getLog().debug("Discovered multi-version jar file location: " + jarEntry.getName());
                         }
                         outputStream.putNextEntry(jarEntry);
