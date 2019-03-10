@@ -13,6 +13,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
@@ -91,15 +95,17 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                         ? new JarOutputStream(new FileOutputStream(targetJar))
                         : new JarOutputStream(new FileOutputStream(targetJar), manifest);
                 try {
-                    boolean hasMultiReleaseFolder = false;
+                    Set<String> missingDirectories = multirelease && createMultiReleaseFolderEntry
+                            ? new HashSet<String>(Arrays.asList("META-INF/", "META-INF/versions/", "META-INF/versions/" + javaVersion + "/"))
+                            : Collections.<String>emptySet();
                     JarEntry jarEntry;
                     while ((jarEntry = inputStream.getNextJarEntry()) != null) {
                         if (jarEntry.getName().equals(filename)) {
                             inputStream.closeEntry();
                             getLog().warn("Ignoring preexisting module-info.class in " + sourceJar);
                             continue;
-                        } else if (("META-INF/versions/" + javaVersion + "/").equals(jarEntry.getName())) {
-                            hasMultiReleaseFolder = true;
+                        } else if (jarEntry.isDirectory() && missingDirectories.remove(jarEntry.getName())) {
+                            getLog().debug("Discovered multi-version jar file location: " + jarEntry.getName());
                         }
                         outputStream.putNextEntry(jarEntry);
                         byte[] buffer = new byte[1024];
@@ -113,8 +119,8 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                     outputStream.putNextEntry(new JarEntry(filename));
                     outputStream.write(makeModuleInfo());
                     outputStream.closeEntry();
-                    if (multirelease && createMultiReleaseFolderEntry && !hasMultiReleaseFolder) {
-                        outputStream.putNextEntry(new JarEntry("META-INF/versions/" + javaVersion + "/"));
+                    for (String directory : missingDirectories) {
+                        outputStream.putNextEntry(new JarEntry(directory));
                         outputStream.closeEntry();
                     }
                 } finally {
