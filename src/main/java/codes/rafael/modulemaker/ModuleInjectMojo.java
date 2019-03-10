@@ -95,7 +95,7 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                         ? new JarOutputStream(new FileOutputStream(targetJar))
                         : new JarOutputStream(new FileOutputStream(targetJar), manifest);
                 try {
-                    Set<String> missingDirectories = multirelease && createMultiReleaseFolderEntry
+                    Set<String> multiReleaseDirectories = multirelease && createMultiReleaseFolderEntry
                             ? new HashSet<String>(Arrays.asList("META-INF/", "META-INF/versions/", "META-INF/versions/" + javaVersion + "/"))
                             : Collections.<String>emptySet();
                     JarEntry jarEntry;
@@ -104,7 +104,7 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                             inputStream.closeEntry();
                             getLog().warn("Ignoring preexisting module-info.class in " + sourceJar);
                             continue;
-                        } else if (missingDirectories.remove(jarEntry.getName())) {
+                        } else if (multiReleaseDirectories.remove(jarEntry.getName())) {
                             getLog().debug("Discovered multi-version jar file location: " + jarEntry.getName());
                         }
                         outputStream.putNextEntry(jarEntry);
@@ -119,7 +119,7 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                     outputStream.putNextEntry(new JarEntry(filename));
                     outputStream.write(makeModuleInfo());
                     outputStream.closeEntry();
-                    for (String directory : missingDirectories) {
+                    for (String directory : multiReleaseDirectories) {
                         outputStream.putNextEntry(new JarEntry(directory));
                         outputStream.closeEntry();
                     }
