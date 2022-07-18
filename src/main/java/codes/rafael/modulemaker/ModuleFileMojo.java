@@ -23,12 +23,12 @@ public class ModuleFileMojo extends AbstractModuleMojo {
 
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
-        File outputDirectory = new File(this.outputDirectory);
-        if (!outputDirectory.isDirectory() && !outputDirectory.mkdirs()) {
-            throw new MojoExecutionException("Could not read or create directory: " + outputDirectory);
+        File outputDirectory = new File(this.outputDirectory), target = new File(outputDirectory, filename()), parent = target.getParentFile();
+        if (!parent.isDirectory() && !parent.mkdirs()) {
+            throw new MojoExecutionException("Could not read or create module directory: " + parent);
         }
         try {
-            OutputStream out = new FileOutputStream(new File(outputDirectory, filename()));
+            OutputStream out = new FileOutputStream(target);
             try {
                 out.write(makeModuleInfo());
             } finally {
