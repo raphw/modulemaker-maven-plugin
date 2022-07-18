@@ -107,9 +107,18 @@ public abstract class AbstractModuleMojo extends AbstractMojo {
     @Parameter
     private List<Provide> provides;
 
+    /**
+     * If set to {@code true}, the plugin is not executed.
+     */
+    @Parameter(required = true, defaultValue = "false")
+    private boolean skip;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if (javaVersion < 9) {
+        if (skip) {
+            getLog().info("Skipping module-info creation as the creation is explicitly skipped.");
+            return;
+        } else if (javaVersion < 9) {
             throw new MojoExecutionException("Invalid Java version for module-info: " + javaVersion);
         }
         doExecute();
