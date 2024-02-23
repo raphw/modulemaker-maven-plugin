@@ -9,18 +9,19 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.lang.reflect.Method;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarInputStream;
-import java.util.jar.JarOutputStream;
-import java.util.jar.Manifest;
+import java.util.concurrent.TimeUnit;
+import java.util.jar.*;
+import java.util.zip.ZipEntry;
 
 /**
  * A Maven plugin for injecting a {@code module-info.class} into an existing jar file.
@@ -67,6 +68,12 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
     @Parameter(defaultValue = "true")
     private boolean createMultiReleaseFolderEntry;
 
+    /**
+     * Defines an output timestamp for JAR entries.
+     */
+    @Parameter(defaultValue = "${project.build.outputTimestamp}")
+    private String outputTimestamp;
+
     @Override
     protected void doExecute() throws MojoExecutionException, MojoFailureException {
         String filename = filename();
@@ -78,6 +85,41 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
         }
         if (!sourceJar.isFile()) {
             throw new MojoExecutionException("Could not locate source jar: " + sourceJar);
+        }
+        JarEntryCreator creator;
+        if (outputTimestamp == null) {
+            creator = new JarEntryCreator.Simple();
+        } else {
+            long time;
+            try {
+                time = Long.parseLong(outputTimestamp) / 1000;
+            } catch (RuntimeException e) {
+                if (outputTimestamp.length() < 2) {
+                    time = -1;
+                } else {
+                    try {
+                        Class<?> offsetDateTime = Class.forName("java.time.OffsetDateTime");
+                        Object parsed = offsetDateTime.getMethod("parse", CharSequence.class).invoke(null, outputTimestamp);
+                        Class<?> zoneOffset = Class.forName("java.time.ZoneOffset");
+                        parsed = offsetDateTime.getMethod("withOffsetSameInstant", zoneOffset).invoke(parsed, zoneOffset.getField("UTC").get(null));
+                        Class<?> temporalUnit = Class.forName("java.time.temporal.TemporalUnit");
+                        Class<?> chronoUnit = Class.forName("java.time.temporal.ChronoUnit");
+                        parsed = offsetDateTime.getMethod("truncatedTo", temporalUnit).invoke(parsed, chronoUnit.getField("SECONDS").get(null));
+                        time = (Long) offsetDateTime.getMethod("toEpochSecond").invoke(parsed);
+                    } catch (Exception ignored) {
+                        throw e;
+                    }
+                }
+            }
+            if (time < 0) {
+                creator = new JarEntryCreator.Simple();
+            } else {
+                try {
+                    creator = new JarEntryCreator.WithOutputTimestampAndMore(time);
+                } catch (Exception ignored) {
+                    creator = new JarEntryCreator.WithOutputTimestamp(time);
+                }
+            }
         }
         String classifier = this.classifier == null || this.classifier.isEmpty() ? "modularized" : this.classifier;
         try {
@@ -91,10 +133,13 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                     throw new MojoFailureException("Could not create target jar: " + targetJar);
                 }
                 Manifest manifest = inputStream.getManifest();
-                JarOutputStream outputStream = manifest == null
-                        ? new JarOutputStream(new FileOutputStream(targetJar))
-                        : new JarOutputStream(new FileOutputStream(targetJar), manifest);
+                JarOutputStream outputStream = new JarOutputStream(new FileOutputStream(targetJar));
                 try {
+                    if (manifest != null) {
+                        outputStream.putNextEntry(creator.toEntry(JarFile.MANIFEST_NAME));
+                        manifest.write(outputStream);
+                        outputStream.closeEntry();
+                    }
                     Set<String> multiReleaseDirectories = multirelease && createMultiReleaseFolderEntry
                             ? new HashSet<String>(Arrays.asList("META-INF/", "META-INF/versions/", "META-INF/versions/" + javaVersion + "/"))
                             : Collections.<String>emptySet();
@@ -116,11 +161,11 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
                         inputStream.closeEntry();
                         outputStream.closeEntry();
                     }
-                    outputStream.putNextEntry(new JarEntry(filename));
+                    outputStream.putNextEntry(creator.toEntry(filename));
                     outputStream.write(makeModuleInfo());
                     outputStream.closeEntry();
                     for (String directory : multiReleaseDirectories) {
-                        outputStream.putNextEntry(new JarEntry(directory));
+                        outputStream.putNextEntry(creator.toEntry(directory));
                         outputStream.closeEntry();
                     }
                 } finally {
@@ -140,6 +185,65 @@ public class ModuleInjectMojo extends AbstractModuleMojo {
             }
         } catch (IOException exception) {
             throw new MojoFailureException("Could not write or read artifact", exception);
+        }
+    }
+
+    interface JarEntryCreator {
+
+        JarEntry toEntry(String name);
+
+        class Simple implements JarEntryCreator {
+            @Override
+            public JarEntry toEntry(String name) {
+                return new JarEntry(name);
+            }
+        }
+
+        class WithOutputTimestamp implements JarEntryCreator {
+
+            private final long time;
+
+            public WithOutputTimestamp(long time) {
+                this.time = time;
+            }
+
+            @Override
+            public JarEntry toEntry(String name) {
+                JarEntry entry = new JarEntry(name);
+                entry.setTime(time / 1000);
+                return entry;
+            }
+        }
+
+        class WithOutputTimestampAndMore implements JarEntryCreator {
+
+            private final long time;
+
+            private final Method fromMillis, setCreationTime, setLastAccessTime, setLastModifiedTime;
+
+            public WithOutputTimestampAndMore(long time) throws Exception {
+                this.time = time;
+                Class<?> fileTime = Class.forName("java.nio.file.attribute.FileTime");
+                fromMillis = fileTime.getMethod("from", long.class, TimeUnit.class);
+                setCreationTime = ZipEntry.class.getMethod("setCreationTime", fileTime);
+                setLastAccessTime = ZipEntry.class.getMethod("setLastAccessTime", fileTime);
+                setLastModifiedTime = ZipEntry.class.getMethod("setLastModifiedTime", fileTime);
+            }
+
+            @Override
+            public JarEntry toEntry(String name) {
+                JarEntry entry = new JarEntry(name);
+                entry.setTime(time);
+                try {
+                    Object fileTime = fromMillis.invoke(null, time, TimeUnit.SECONDS);
+                    setCreationTime.invoke(entry, fileTime);
+                    setLastAccessTime.invoke(entry, fileTime);
+                    setLastModifiedTime.invoke(entry, fileTime);
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+                return entry;
+            }
         }
     }
 }
