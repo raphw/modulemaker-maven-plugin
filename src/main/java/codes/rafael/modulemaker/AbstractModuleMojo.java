@@ -135,7 +135,7 @@ public abstract class AbstractModuleMojo extends AbstractMojo {
         classWriter.visit(44 + javaVersion, Opcodes.ACC_MODULE, "module-info", null, null, null);
         ModuleVisitor moduleVisitor = classWriter.visitModule(name, 0, version);
         if (mainClass != null) {
-            moduleVisitor.visitMainClass(mainClass.trim());
+            moduleVisitor.visitMainClass(mainClass.trim().replace('.', '/'));
         }
         if (packages != null) {
             Set<String> previousPackages = new HashSet<String>();
