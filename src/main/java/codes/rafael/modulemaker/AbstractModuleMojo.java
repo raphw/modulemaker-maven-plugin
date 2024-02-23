@@ -134,6 +134,9 @@ public abstract class AbstractModuleMojo extends AbstractMojo {
         ClassWriter classWriter = new ClassWriter(0);
         classWriter.visit(44 + javaVersion, Opcodes.ACC_MODULE, "module-info", null, null, null);
         ModuleVisitor moduleVisitor = classWriter.visitModule(name, 0, version);
+        if (mainClass != null) {
+            moduleVisitor.visitMainClass(mainClass.trim());
+        }
         if (packages != null) {
             Set<String> previousPackages = new HashSet<String>();
             for (String aPackage : packages.split(",")) {
@@ -216,9 +219,6 @@ public abstract class AbstractModuleMojo extends AbstractMojo {
                     moduleVisitor.visitOpen(aPackage.trim().replace('.', '/'), 0, modules);
                 }
             }
-        }
-        if (mainClass != null) {
-            moduleVisitor.visitMainClass(mainClass.trim());
         }
         if (uses != null) {
             Set<String> previousUses = new HashSet<String>();
